@@ -1,0 +1,93 @@
+package nimesa;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
+import java.text.SimpleDateFormat;
+import org.json.*;
+
+public class Netclient {
+	
+	static int cnt = 0;
+	static long dt[]; 
+	static Date firstDate;
+	static JSONArray responseList;
+	static JSONObject response;
+
+	static String queryApi = "https://samples.openweathermap.org/data/2.5/forecast/hourly?q=London,us&appid=b6907d289e10d714a6e88b30761fae22";
+	private static void setResponse() {
+		try {
+			URL url = new URL(Netclient.queryApi);
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("GET");
+			conn.setRequestProperty("Accept", "application/json");
+			if (conn.getResponseCode() != 200) {
+				throw new RuntimeException("Failed : HTTP error code : "
+						+ conn.getResponseCode());
+			}
+
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+				(conn.getInputStream())));
+
+			String read, output = "";
+			//System.out.println("Output from Server .... \n");
+			while ((read = br.readLine()) != null) {
+				output += read;
+			}conn.disconnect();
+			
+			Netclient.response = new JSONObject(output);
+
+		  } catch (MalformedURLException e) {
+
+			e.printStackTrace();
+
+		  } catch (IOException e) {
+
+			e.printStackTrace();
+
+		  }
+
+	}
+	
+	public static boolean validateWeatherArray(JSONArray weatherArray, int id, String description) {
+		for (int i = 0; i < weatherArray.length(); i++) {
+		   JSONObject weatherObject = weatherArray.getJSONObject(i);
+		   int weatherId = weatherObject.getInt("id");
+		   String weatherDescription = weatherObject.getString("description");
+		   //System.out.println(weatherId + ", " + weatherDescription);
+		   if(weatherId == id && !weatherDescription.equalsIgnoreCase(description))
+			   return false;
+		}
+		return true;
+	}
+
+	public static String validateResponseList(int id, String description) {
+		for (int i = 0; i <  Netclient.responseList.length(); i++) {
+		   JSONArray weatherArray = Netclient.responseList.getJSONObject(i).getJSONArray("weather");
+		   if(Netclient.validateWeatherArray(weatherArray, id, description) == false)
+			   return "Validation Failed!!!";
+		}
+		return  "Validation Success!!!";
+	}
+	
+	public static void init()  {
+		Netclient.setResponse();
+		Netclient.cnt = Netclient.response.getInt("cnt");
+		Netclient.responseList = Netclient.response.getJSONArray("list");
+		
+	}
+	
+	
+
+	public static void main(String[] args) {
+		Netclient.init();
+		System.out.println("id: 500, description: 'light rain' => " + Netclient.validateResponseList(500, "light rain"));
+		System.out.println("id: 800, description: 'clear sky' => " + Netclient.validateResponseList(800, "clear sky"));
+	}
+
+}
+
+
